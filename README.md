@@ -4,7 +4,7 @@
 총 4단계의 연동 작업이 필요하다.
 
 1. 퍼블리셔 앱의 Key Hash를 버즈스토어 어드민에 등록
-2. 신규 유저의 회원가입 후 해당 유저의 보안용 토큰 생성을 위한 버즈스토어 서버와 퍼블리셔 서버 사이의 server-to-server 연동
+2. 유저의 보안용 토큰 생성을 위한 버즈스토어 서버와 퍼블리셔 서버 사이의 server-to-server 연동
 3. 퍼블리셔 앱 클라이언트로부터 퍼블리셔 서버로의 API call 구현
 4. 안드로이드 앱 내에 모바일 UI를 띄우기 위한 SDK 연동
 
@@ -37,40 +37,54 @@ keytool -exportcert -alias <Release key alias> -keystore <Release key path> | op
 
 ## 2. BuzzStore server-to-server integration
 
-- **호출 시점:  신규 유저 회원가입 완료 시**
+보안 때문에 SDK 사용을 위해서는 인증이 필요하다. 위 API를 호출하면 유저의 토큰(i.e. 비밀번호)을 생성하여 퍼블리셔 서버로 전달한다. 퍼블리셔 서버는 해당 토큰을 받아서 퍼블리셔 DB에 저장해야 한다. 이 저장된 유저 토큰을 SDK 사용 시 함수 파라미터로 전달해야 한다. 이 API 사용을 위해서는 먼저 퍼블리셔 서버의 아이피 주소를 화이트 리스트로 등록해야 한다. 화이트 리스트 등록은 별도의 채널(e.g. 이메일)을 통해서 퍼블리셔가 전달한다.
+
+#### (1) 생성
+- *호출 시점: 유저의 최초 스토어 사용 시점 이전에 반드시 한번 *
 - API 호출 방향 : 퍼블리셔 서버 -> 버즈스토어 서버
 - method : `POST`
-- url : `https://52.193.111.153/api/users` (테스트 계)
+- url : `https://52.193.111.153/api/users` (테스트 환경)
 - Headers : 다음의 파라미터를 담아서 요청한다.
-    - `HTTP-X-BUZZVIL-APP-ID` : 사전에 발급한 app key
-    - `HTTP-X-BUZZVIL-API-KEY` : 1단계를 통해 생성한 Hash key(릴리즈용 또는 디버그용)
-- Content-Type : `application/json`
+    - `HTTP-X-BUZZVIL-APP-ID` : 사전에 발급한 퍼블리셔 앱에 부여 된 고유한 아이디.
+    - `HTTP-X-BUZZVIL-API-KEY` : 서버 투 서버 API 사용을 위한 고유한 API 키
 - POST 필수 파라미터 : 퍼블리셔의 유저 식별자 `publisher_user_id`
 - e.g.
 ```JSON
 {
-"publisher_user_id": "test_user_id@naver.com"
+"publisher_user_id": 1270537
 }
 ```
-- 단, 버즈스토어는 퍼블리셔 유저 식별자를 기준으로 유저를 식별하므로 해당 값은 추후 바꿀 수 없다. 또한, 유저 식별자는 `utf-8` 인코딩 및 `URL` 인코딩 처리 되어 전달되야 된다.
+- 단, 버즈스토어는 퍼블리셔 유저 식별자를 기준으로 유저를 식별하므로 해당 값은 추후 바꿀 수 없다. 두개 이상의 서로 다른 유저 식별자에 대해서 버즈스토어는 서로 다른 유저로 인식한다. 따라서, 퍼블리셔가 제공하는 유저 식별자는 절대 업데이트되지 않는 값을 권장한다. 예를들어, 추후 변경의 여지가 있는 이메일보다는 퍼블리셔 디비의 고유 식별자로 권장한다.
 - 성공 시 JSON 포맷으로 `publisher_user_id`, `token` 를 리턴한다. HTTP 응답 상태 코드는 200 이다. 
 - e.g.
 ```JSON
 {
-"publisher_user_id": "test_user_id@naver.com", 
+"publisher_user_id": 1270537,
 "token": "yYn05pKNlHpMdmBd2GeXU4tBdQtIENuFmFJ0MhBJkwBIzE2TXffLTA7bfWAmRSOc"
 }
 ```
-- 실패 시 JSON 포맷으로 `code`, `message` 를 리턴한다. HTTP 응답 상태 코드는 400 이다.
+- 실패 시 JSON 포맷으로 `error_code`, `error_message` 를 리턴한다. HTTP 응답 상태 코드는 400 이다.
+
+#### (2) 재발급
+- *호출 시점: 특정한 유저 A의 최신 토큰을 재발급 받을 필요가 있을 때*
+- API 호출 방향 : 퍼블리셔 서버 -> 버즈스토어 서버
+- method: `GET`
+- url : `https://52.193.111.153/api/users/<user_id>` (테스트 환경)
+- Headers : 다음의 파라미터를 담아서 요청한다.
+    - `HTTP-X-BUZZVIL-APP-ID` : 사전에 발급한 퍼블리셔 앱에 부여 된 고유한 아이디.
+    - `HTTP-X-BUZZVIL-API-KEY` : 서버 투 서버 API 사용을 위한 고유한 API 키
+
+- GET 필수 파라미터 : 없음. 단, Restful API 디자인 가이드라인에 따라 url 주소 `<user_id>` 자리에 퍼블리셔 유저 식별자를 입력한다.
 
 #### 주의사항 
-- TODO : 재시도 관련 설명 추가
+- 천재지변등의 이유로 버즈스토어 서버가 위 API 를 통한 토큰 발급에 실패하는 경우 스토어 SDK 이용이 제한 된다. 
+- 이 때, 퍼블리셔 서버는 주기적인 재시도를 통해 유저 토큰을 발급 받아야 한다.
 
 ## 3. Publisher API call
 
-위의 server-to-server 연동을 통해 버즈스토어 서버로부터 퍼블리셔 서버로 유저 토큰을 전달하게 된다. 이 토큰을 클라이언트로 전달하기 위해 퍼블리셔 측의 API call 구현이 필요하다. 퍼블리셔 앱이 기존에 쓰고 있던 통신 방식을 통해 유저 토큰을 퍼블리셔 서버에서 클라이언트로 전달한다.
+위의 server-to-server 연동을 통해 버즈스토어 서버로부터 퍼블리셔 서버로 유저 토큰을 전달하게 된다. 이 토큰은 스토어 SDK 사용을 위해 반드시 필요하다. 따라서, 퍼블리셔 서버에 저장 된 유저 토큰을 클라이언트로 전달하기 위해 퍼블리셔 측의 API 구현이 필요하다. 퍼블리셔 앱이 기존에 쓰고 있던 통신 방식을 통해 유저 토큰을 퍼블리셔 서버에서 클라이언트로 전달한다.
+- 유저 토큰을 퍼블리셔 디비에서 클라이언트로 전달하는 시점은 로그인 성공시를 권장한다.
 - SDK가 제공하는 listener를 이용하여 클라이언트가 유저 토큰 획득에 실패할 경우를 캐치하여 다시 요청을 시도해야 한다.
-- TODO
 
 ## 4. BuzzStore SDK for Android integration
 
