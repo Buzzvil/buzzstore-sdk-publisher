@@ -1,4 +1,4 @@
-# BuzzStore Integration Guide v1.0
+# BuzzStore Integration Guide v0.8
 
 버즈스토어를 연동하기 위한 통합 가이드.
 총 4단계의 연동 작업이 필요하다.
