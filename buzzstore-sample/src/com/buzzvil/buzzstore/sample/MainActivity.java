@@ -13,55 +13,43 @@ import com.buzzvil.buzzstore.sdk.BuzzStore;
 
 public class MainActivity extends Activity {
 
-    ToggleButton loginButton;
-    Button loadStoreButton;
-    SharedPreferences preference;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        preference = getSharedPreferences("BuzzStore_Sample", Context.MODE_PRIVATE);
 
-        loginButton = (ToggleButton)findViewById(R.id.loginButton);
-        boolean status = preference.getBoolean("login", false);
+        /**
+         * Initialize BuzzStore.
+         * BuzzStore.init have to be called prior to BuzzStore.loadStore
+         * appId : Unique key value to identify the publisher.
+         * userId : user identifier used from publisher
+         * this : Context
+         */
+        BuzzStore.init("appId", "userId", this);
 
-        if (status) {
-            loginButton.setChecked(true);
-        }
-
-        loginButton.setOnClickListener(new View.OnClickListener() {
+        BuzzStore.setBuzzStoreListener(new BuzzStore.BuzzStoreListener() {
             @Override
-            public void onClick(View v) {
-                if (loginButton.isChecked()) {
-                    // 로그인 완료된 상황을 가정함
-                    // 퍼블리셔 서버와 앱의 통신을 통해 user_token도 받아온 상태
-                    preference.edit().putBoolean("login", true).apply();
-                    Toast.makeText(MainActivity.this, "login!", Toast.LENGTH_LONG).show();
-
-                    // 로그인이 완료된 후 user_id, user_token을 넣어서 start를 호출한다.
-                    // user_id : 로그인이 완료된 유저의 id
-                    // user_token : API 통신 이후 받아온 token
-                    BuzzStore.start("user_id", "user_token");
-
-                } else {
-                    // 세션 종료, 로그아웃 되는 상황을 가정함
-                    // 저장해 둔 스토어 로드용 유저 정보를 제거한다.
-                    preference.edit().putBoolean("login", false).apply();
-                    Toast.makeText(MainActivity.this, "logout!", Toast.LENGTH_LONG).show();
-
-                    // 저장된 user_id, user_token을 제거한다.
-                    BuzzStore.exit();
-
-                }
-
+            public String needCall() {
+                // 해당 함수가 호출 되면 해당 유저의 유저토큰이 리턴되어야 한다.
+                // 보안상의 이유로 해당 유저토큰은 서버 투 서버로만 제공되므로 퍼블리셔앱은 반드시
+                // 퍼블리셔 서버를 통해서 버즈스토어로 요청해야 한다. 자세한 부분은 2번 사항 참조.
+                return "EXAMPLE_USER_TOKEN";
             }
-        });
 
-        loadStoreButton = (Button)findViewById(R.id.showStoreButton);
-        loadStoreButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onFail() {
+                // 최대 횟수 만큼 SDK 내부에서 유저토큰 벨리데이션이 실패한 경우 이 함수가 호출 된다.
+                // 이 때, 퍼블리셔는 앱단에서 실패 UI 등을 정의해서 처리해야 한다.
+                Toast.makeText(this, "Fail to Load BuzzStore", Toast.LENGTH_LONG).show();
+            }
+
+        findViewById(R.id.showStoreButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                /**
+                 * Load BuzzStore.
+                 * MainActivity.this : Current activity
+                 */
                 BuzzStore.loadStore(MainActivity.this);
             }
         });
