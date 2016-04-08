@@ -9,8 +9,8 @@
 4. 안드로이드 앱 내에 모바일 UI를 띄우기 위한 SDK 연동
 
 ## 1. Key Hash를 버즈스토어 어드민에 등록
-
-- 버즈스토어 어드민에 다음과 같이 콘솔을 이용하거나 코드를 이용해서 얻은 Key Hash를 등록한다. 
+- 퍼블리셔가 버즈스토어 서버에 보내는 request에 대한 보안 강화를 위해 위조가 불가능한 퍼블리셔 식별자가 필요하다. 퍼블리셔 앱의 고유한 Key Hash 값을 이러한 식별자로 이용한다.
+- 버즈스토어 어드민에 다음과 같이 콘솔을 이용하거나 코드를 이용해서 얻은 Key Hash를 등록한다.
 - Key Hash는 디버그 앱과 릴리즈 앱이 서로 다르다.
 - 디버그 앱의 Key Hash는 빌드하는 환경(e.g. 컴퓨터)에 따라 달라진다. 다수의 개발자가 디버그용 앱을 각각 다른 환경에서 빌드할 경우, 각각의 환경에서의 Key Hash를 모두 등록해야 한다.
 - 어드민에 Key Hash가 등록되어 있지 않으면 버즈스토어를 로드할 수 없다.
@@ -25,7 +25,7 @@ keytool -exportcert -alias androiddebugkey -keystore ~/.android/debug.keystore |
 ```
 
 ##### 릴리즈용 Key Hash
-터미널에서 다음과 같은 command를 통해 릴리즈용 Key Hash를 얻을 수 있다. 아래의 '<Release key alias>' 에는 릴리즈 키의 alias를, '<Release key path>' 에는 릴리즈 키의 path를 입력한다.
+터미널에서 다음과 같은 command를 통해 릴리즈용 Key Hash를 얻을 수 있다. 아래의 `<Release key alias>` 에는 릴리즈 키의 alias를, `<Release key path>` 에는 릴리즈 키의 path를 입력한다.
 > 주의 : 릴리즈용 키를 얻으려면 이전에 지정한 키 저장소 비밀번호 입력이 필요하다.
 
 ```
@@ -72,31 +72,34 @@ keytool -exportcert -alias <Release key alias> -keystore <Release key path> | op
 - url : `https://52.193.111.153/api/users/<user_id>` (테스트 환경)
 - Headers : 다음의 파라미터를 담아서 요청한다.
     - `HTTP-X-BUZZVIL-APP-ID` : 사전에 발급한 퍼블리셔 앱에 부여 된 고유한 아이디.
-    - `HTTP-X-BUZZVIL-API-KEY` : 서버 투 서버 API 사용을 위한 고유한 API 키
+    - `HTTP-X-BUZZVIL-API-KEY` : 사전에 발급한 서버 투 서버 API 사용을 위한 고유한 API 키
 
 - GET 필수 파라미터 : 없음. 단, Restful API 디자인 가이드라인에 따라 url 주소 `<user_id>` 자리에 퍼블리셔 유저 식별자를 입력한다.
 
 #### 주의사항 
-- 천재지변등의 이유로 버즈스토어 서버가 위 API 를 통한 토큰 발급에 실패하는 경우 스토어 SDK 이용이 제한 된다. 
+- 천재지변등의 이유로 버즈스토어 서버가 위 API 를 통한 토큰 발급에 실패하는 경우 스토어 SDK 이용이 제한 된다.
 - 이 때, 퍼블리셔 서버는 주기적인 재시도를 통해 유저 토큰을 발급 받아야 한다.
 
 ## 3. Publisher API call
 
 위의 server-to-server 연동을 통해 버즈스토어 서버로부터 퍼블리셔 서버로 유저 토큰을 전달하게 된다. 이 토큰은 스토어 SDK 사용을 위해 반드시 필요하다. 따라서, 퍼블리셔 서버에 저장 된 유저 토큰을 클라이언트로 전달하기 위해 퍼블리셔 측의 API 구현이 필요하다. 퍼블리셔 앱이 기존에 쓰고 있던 통신 방식을 통해 유저 토큰을 퍼블리셔 서버에서 클라이언트로 전달한다.
 - 유저 토큰을 퍼블리셔 디비에서 클라이언트로 전달하는 시점은 로그인 성공시를 권장한다.
-- SDK가 제공하는 listener를 이용하여 클라이언트가 유저 토큰 획득에 실패할 경우를 캐치하여 다시 요청을 시도해야 한다.
+
+#### 유저 토큰 요청 재시도
+- SDK가 제공하는 listener인 `UserTokenListener`를 이용하면 앱 내에서 스토어를 로드하는 순간 유저 토큰이 없거나 유효하지 않은 경우를 캐치할 수 있다(UserTokenListener.onFail). 이 경우에 
 
 ## 4. BuzzStore SDK for Android integration
 
 - 버즈스토어를 안드로이드 어플리케이션에 연동하기 위한 라이브러리
-- 안드로이드 버전 지원 : Android 2.3(API Level 9) 이상
+- 안드로이드 버전 지원 : Android 4.0.3(API Level 15) 이상
 - 스토어 목록은 웹뷰로 이루어져 있으며, SDK를 이용해 필수 파라미터를 전달하여 모바일 UI를 호출한다.
 - 보안을 위한 user Token 관리를 위해 퍼블리셔 서버와 버즈스토어 서버 간 server to server 연동이 선행되어야 한다.
 
 #### 필수 파라미터 설명
-- `appKey` : 버즈스토어에서 퍼블리셔 앱을 구별하기 위한 고유 식별자. 고정된 값으로, 연동 전에 지급하며 어드민에서 확인할 수 있다.
+- `appId` : 버즈스토어에서 퍼블리셔 앱을 구별하기 위한 고유 식별자. 고정된 값으로, 연동 전에 지급하며 어드민에서 확인할 수 있다.
 - `userId` : 퍼블리셔에서 관리하는 고유의 유저 아이디.
 - `userToken` : userId와 1:1매칭되는 보안용 토큰. 회원 가입 완료 시 2단계의 server-to-server 연동을 통해 버즈스토어 서버로부터 퍼블리셔 서버로 전달 받으며, 3단계의 API call 을 통해 퍼블리셔 서버에서 퍼블리셔 앱으로 전달받는다.
+> 여러 단계를 거쳐 전달되는 값이기 때문에 유저 토큰이 유효하지 않은 이벤트가 발생 시 실패 시 재시도를 하기 위한 listener 가 존재한다.
 
 #### 기본 설정
 
@@ -132,6 +135,10 @@ Proguard 사용 시 다음 라인들을 Proguard 설정에 추가한다.
 - `BuzzStore.loadStore(Activity activity)` : 버즈스토어 모바일 UI를 호출한다.
 > **주의** : 반드시 `init()`이 먼저 호출된 이후에 호출해야 한다.
 
+#### UserToken 유효성 검사 (권장사항)
+
+- `BuzzStore.setUserTokenListener(UserTokenListener listener)` : 
+
 #### 사용 예제
 ```Java
 public class MainActivity extends Activity {
@@ -144,12 +151,12 @@ public class MainActivity extends Activity {
         /**
          * Initialize BuzzStore.
          * BuzzStore.init have to be called prior to BuzzStore.loadStore
-         * appKey : Unique key value for publisher.
+         * appId : Unique key value to identify the publisher.
          * userId : user identifier used from publisher
          * userToken : latest user token from server to server communication
          * this : Context
          */
-        BuzzStore.init("appKey", "userId", "userToken", this);
+        BuzzStore.init("appId", "userId", "userToken", this);
 
         findViewById(R.id.showStoreButton).setOnClickListener(new View.OnClickListener() {
             @Override
