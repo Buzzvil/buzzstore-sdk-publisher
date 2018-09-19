@@ -318,21 +318,19 @@ e.g.
 ###### 요청
 - API 호출 방향 : 퍼블리셔 서버 -> 버즈스토어 서버
 - method : `POST`
-- url : `https://store-api.buzzvil.com/api/v1/control`
+- url : `https://store-api.buzzvil.com/api/v1/points`
 - Headers : 다음의 파라미터를 담아서 요청한다.
     - `X-BUZZVIL-APP-ID` : 사전에 발급한 퍼블리셔 앱에 부여 된 고유한 아이디
     - `X-BUZZVIL-API-TOKEN` : 사전에 발급한 서버 투 서버 API 사용을 위한 고유한 API 토큰
     - `X-BUZZVIL-USER-ID`: 퍼블리셔 유저 아이디
 - POST 필수 파라미터 : 
-    - `type`: 지급 혹은 차감 구분자. 지급일 경우 "add", 차감일 경우 "withdraw"
-    - `amount`: 지급/차감 포인트. int이고 금액 단위가 아닌 포인트 단위여야 함. 그리고 양수여야 함
+    - `amount`: 지급/차감 포인트. int이고 금액 단위가 아닌 포인트 단위여야 함. 양수이면 포인트 지급, 음수이면 포인트 차감임
     - `title`: 지급/차감의 이유 (ex. "3월 마케팅 이벤트")
 - Content-Type: application/x-www-form-urlencoded (아래의 요청 Body가 이런 포맷으로 전달되어야 함)
 
 e.g.
 ```Body
 {
-    "type": "add",
     "amount": 500,
     "title": "제비뽑기 이벤트"
 }
@@ -340,7 +338,7 @@ e.g.
 
 e.g.
 ```
-POST https://store-api.buzzvil.com/api/v1/control
+POST https://store-api.buzzvil.com/api/v1/points
 ```
 
 > **주의** : 지급/차감 API 는 절대 클라이언트에서 직접 호출 되서는 안된다. 클라이언트 <-> 퍼블리셔 서버 <-> 버즈스토어 서버를 통한 중계 방식을 이용해야 한다.
