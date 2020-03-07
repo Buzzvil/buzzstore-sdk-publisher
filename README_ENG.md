@@ -108,7 +108,7 @@ When BuzzzStore Server fails to issue tokens through API due to a temporary fail
 
     <!-- activity for BuzzStore -->
     <activity
-            android:name="com.buzzvil.buzzstore.StoreActivity" />
+            android:name="com.buzzvil.buzzstore.sdk.StoreActivity" />
     </application>
     ...
 </manifest>
